@@ -17,7 +17,7 @@ Or use `ghcr.io/whazor/clickops:latest` image.
 ## Kubernetes / Helm
 Via [https://bjw-s.github.io/helm-charts/](https://bjw-s.github.io/helm-charts/)
 
-Download and edit [clickops-values.yaml](./clickops-values.yaml)
+Download and edit [clickops-values.yaml](./k8s/clickops-values.yaml)
 
 ```
 helm repo add bjw-s https://bjw-s.github.io/helm-charts/
