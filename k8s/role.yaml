@@ -4,9 +4,9 @@ metadata:
   namespace: default
   name: clickops-read
 rules:
-# used for reviewing pods
+# for reading/checking all resources
 - apiGroups: [""] # "" indicates the core API group
-  resources: ["pods"]
+  resources: ["*"]
   verbs: ["get", "watch", "list"]
 # used for listing and retrieving information on helm releases
 - apiGroups: ["helm.toolkit.fluxcd.io"]
