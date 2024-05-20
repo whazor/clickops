@@ -4,7 +4,7 @@ controllers:
       app:
         image:
           repository: ghcr.io/whazor/clickops
-          tag: main@sha256:39e9717cffa2f7f1cc6e17e11b2c9eccd41dc15fb335dac040a25da05cf005c0
+          tag: v0.0.1@sha256:7c8e6f414306a8b4402dba3145a7ce525fdeedfa72f7c3d91de16aac0c7761d8
         resources:
           requests:
             memory: 100Mi
