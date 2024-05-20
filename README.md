@@ -24,6 +24,8 @@ helm repo add bjw-s https://bjw-s.github.io/helm-charts/
 helm install clickops bjw-s/app-template --values ./clickops-values.yaml
 ```
 
+Clickops does not provide authentication, so you are required to limit access or add forward authentication via Nginx/Traefik.
+
 ### RBAC, don't forget!!
 
 Without the following RBAC resources, the app won't be able to list resources in your cluster.
