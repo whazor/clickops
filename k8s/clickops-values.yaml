@@ -1,0 +1,68 @@
+controllers:
+  clickops:
+    containers:
+      app:
+        image:
+          repository: ghcr.io/whazor/clickops
+          tag: main@sha256:39e9717cffa2f7f1cc6e17e11b2c9eccd41dc15fb335dac040a25da05cf005c0
+        resources:
+          requests:
+            memory: 100Mi
+            cpu: 25m
+          limits:
+            memory: 259Mi
+        env:
+          TZ: "Europe/Amsterdam"
+          # not used
+          __PORT: &port 3000
+          __HOST: &host "clickops.example.com"
+        probes:
+          liveness: &probe
+            enabled: true          
+            custom: true
+            spec:
+              httpGet:
+                path: /ping
+                port: *port
+              initialDelaySeconds: 5
+              periodSeconds: 30
+              timeoutSeconds: 10
+              failureThreshold: 3
+          readiness: *probe
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: { drop: ["ALL"] }
+    pod:
+      automountServiceAccountToken: true
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+        fsGroupChangePolicy: "OnRootMismatch"
+        supplementalGroups: [1000]
+serviceAccount:
+  name: clickops
+service:
+  app:
+    controller: &name clickops
+    ports:
+      http:
+        port: *port
+ingress:
+  app:
+    hosts:
+      - host: *host
+        paths:
+        - path: /
+          service:
+            identifier: app
+            port: http
+    tls:
+      - secretName: clickops-tls
+        hosts:
+          - *host
+    annotations:
+      hajimari.io/enable: "true"
+      hajimari.io/icon: mouse
