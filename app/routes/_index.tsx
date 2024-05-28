@@ -59,11 +59,35 @@ export async function loader() {
               : 1;
           }),
         ingress: ingress.filter((ing) => objectFilter(ing, r as HelmRelease)),
-      })),
+      })).sort(releaseSorter),
     };
   } catch (e) {
     throw catchErrorResponse(e);
   }
+}
+type HR = {
+  release: HelmRelease,
+  pods: any[]
+  ingress: any[];
+}
+function releaseSorter(
+  a: HR,
+  b: HR
+) {
+  // first sort by ready status, then pod status
+  const aStatus = lastStatus(a.release)?.status;
+  const bStatus = lastStatus(b.release)?.status;
+  if (aStatus == "False" || bStatus == "False") {
+    return 1 * (aStatus == "True" ? 1 : -1);
+  }
+  const aPodsStatus = hrPodStatus(a.pods);
+  const bPodsStatus = hrPodStatus(b.pods);
+  if (aPodsStatus != bPodsStatus) {
+    return aPodsStatus - bPodsStatus;
+  }
+  const aName = a.release.metadata!.name!;
+  const bName = b.release.metadata!.name!;
+  return aName.localeCompare(bName);
 }
 
 const hrPodStatus = (pods: SerializeFrom<V1Pod>[]) => {
@@ -102,22 +126,6 @@ export default function Index() {
           </TableHeader>
           <TableBody>
             {data.releases
-              .sort((a, b) => {
-                // first sort by ready status, then pod status
-                const aStatus = lastStatus(a.release)?.status;
-                const bStatus = lastStatus(b.release)?.status;
-                if (aStatus == "False" || bStatus == "False") {
-                  return 1 * (aStatus == "True" ? 1 : -1);
-                }
-                const aPodsStatus = hrPodStatus(a.pods);
-                const bPodsStatus = hrPodStatus(b.pods);
-                if (aPodsStatus != bPodsStatus) {
-                  return aPodsStatus - bPodsStatus;
-                }
-                const aName = a.release.metadata!.name!;
-                const bName = b.release.metadata!.name!;
-                return aName.localeCompare(bName);
-              })
               .map(({ release, pods, ingress }) => (
                 <TableRow key={release.metadata.uid}>
                   <TableCell>
@@ -135,9 +143,8 @@ export default function Index() {
                         {ingress.map((ing) => (
                           <a
                             key={ing?.metadata?.uid}
-                            href={`http${
-                              ing.spec?.tls ? "s" : ""
-                            }://${ing.spec?.rules?.[0].host}`}
+                            href={`http${ing.spec?.tls ? "s" : ""
+                              }://${ing.spec?.rules?.[0].host}`}
                             target="_blank"
                             rel="noreferrer"
                             className="first:ml-1 text-sm text-muted-foreground"
