@@ -113,7 +113,7 @@ function customK8SRequest() {
 }
 
 const group = "helm.toolkit.fluxcd.io";
-const version = "v2beta2";
+const defaultVersion = "v2";
 
 type ObjectItem = {
   apiVersion: string;
@@ -122,7 +122,23 @@ type ObjectItem = {
   spec?: object;
 };
 
+type VersionMap = Record<string, string | undefined>
+let versionCache: VersionMap | null;
+
 export class K8sClient implements KubernetesAPI, LogsAPI {
+  async listAPIs(): Promise<VersionMap> {
+    const apis = loadk8sapis();
+    let res = versionCache;
+    if (!res) {
+      const versions = await apis.getAPIVersions()
+      res = versionCache = Object.fromEntries(versions.groups.map(
+        group => (
+          [group.name, group.preferredVersion?.version]
+        )
+      ));
+    }
+    return res;
+  }
   async listHRResources(
     namespace: string,
     instance: string
@@ -293,15 +309,21 @@ export class K8sClient implements KubernetesAPI, LogsAPI {
   }
 
   async listHRs(): Promise<HelmRelease[]> {
+    const apis = await this.listAPIs();
     const k8sCustApi = loadk8sCustomObjectsApi();
-
+    let versions = []
+    if (group in apis && apis[group]) {
+      versions.push(apis[group])
+    }
     return (
-      await k8sCustApi.listClusterCustomObject({
-        group,
-        version,
-        plural: "helmreleases",
-      })
-    ).items as HelmRelease[];
+      await Promise.all(versions.map(async version =>
+        (await k8sCustApi.listClusterCustomObject({
+          group,
+          version,
+          plural: "helmreleases",
+        })).items as HelmRelease[]
+      ))
+    ).flat();
   }
   async listPods(): Promise<V1Pod[]> {
     const k8sApi = loadk8s();
@@ -326,6 +348,8 @@ export class K8sClient implements KubernetesAPI, LogsAPI {
     instance: string
   ): Promise<HelmRelease | undefined> {
     const k8sCustApi = loadk8sCustomObjectsApi();
+    const apis = await this.listAPIs();
+    const version = apis[group] || defaultVersion;
     const hr = await k8sCustApi.getNamespacedCustomObject({
       group,
       version,
