@@ -6,6 +6,8 @@ import k8s, {
 import { KubernetesAPI } from "./interface";
 import dayjs from "dayjs";
 import { HelmRelease } from "@kubernetes-models/flux-cd/helm.toolkit.fluxcd.io/v2beta2";
+import { Kustomization } from "@kubernetes-models/flux-cd/kustomize.toolkit.fluxcd.io/v1";
+import { GitRepository } from "@kubernetes-models/flux-cd/source.toolkit.fluxcd.io/v1";
 import { Log, LogsAPI } from "../logs/interface";
 import https from "https";
 
@@ -126,6 +128,36 @@ type VersionMap = Record<string, string | undefined>
 let versionCache: VersionMap | null;
 
 export class K8sClient implements KubernetesAPI, LogsAPI {
+  async getKustomization(namespace: string, name: string): Promise<Kustomization | undefined> {
+    const group = "kustomize.toolkit.fluxcd.io";
+    const k8sCustApi = loadk8sCustomObjectsApi();
+    const apis = await this.listAPIs();
+    const version = apis[group] || defaultVersion;
+    const kust = await k8sCustApi.getNamespacedCustomObject({
+      group,
+      version,
+      plural: "kustomizations",
+      namespace,
+      name,
+    });
+    if (!kust) return;
+    return kust as Kustomization;
+  }
+  async getGitRepo(namespace: string, name: string): Promise<GitRepository | undefined> {
+    const group = "source.toolkit.fluxcd.io";
+    const k8sCustApi = loadk8sCustomObjectsApi();
+    const apis = await this.listAPIs();
+    const version = apis[group] || "v1";
+    const repo = await k8sCustApi.getNamespacedCustomObject({
+      group,
+      version,
+      plural: "gitrepositories",
+      namespace,
+      name,
+    })
+    if (!repo) return;
+    return repo;
+  }
   async listAPIs(): Promise<VersionMap> {
     const apis = loadk8sapis();
     let res = versionCache;
